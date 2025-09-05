@@ -1,28 +1,53 @@
 {
   "expo": {
+    "owner": "danzotti",
     "name": "celebeaty-mobile",
     "slug": "celebeaty-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "celebeatymobile",
+    "scheme": "celebeaty",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.danzotti.celebeaty",
+      "buildNumber": "1",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": ["spotify"]
+      }
     },
+
     "android": {
+      "package": "com.danzotti.celebeaty",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "data": [
+            {
+              "scheme": "celebeaty",
+              "host": "auth"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
+
     "web": {
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
+
     "plugins": [
       "expo-router",
       [
@@ -35,8 +60,13 @@
         }
       ]
     ],
+
     "experiments": {
       "typedRoutes": true
+    },
+
+    "extra": {
+      "backendUrl": "https://adjusted-kitten-settled.ngrok-free.app"
     }
   }
 }

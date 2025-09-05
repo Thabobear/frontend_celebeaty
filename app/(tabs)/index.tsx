@@ -1,75 +1,82 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+// app/(tabs)/index.tsx
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Text, Pressable, ActivityIndicator, Alert } from "react-native";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
+import Constants from "expo-constants";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+WebBrowser.maybeCompleteAuthSession();
+
+const BACKEND_URL = (Constants.expoConfig?.extra as any)?.backendUrl || "";
 
 export default function HomeScreen() {
+  const [me, setMe] = useState<{ id: string; display_name?: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    const sub = Linking.addEventListener("url", async ({ url }) => {
+      const { path } = Linking.parse(url);
+      if (path === "callback") {
+        try {
+          const r = await fetch(`${BACKEND_URL}/whoami`, { credentials: "include" as any });
+          if (r.ok) {
+            const j = await r.json();
+            setMe({ id: j.id, display_name: j.display_name });
+            setMsg("Login erfolgreich ✅");
+          } else {
+            setMsg("Fehler: whoami fehlgeschlagen");
+          }
+        } catch {
+          setMsg("Netzwerkfehler");
+        }
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  const doLogin = useCallback(async () => {
+    if (!BACKEND_URL) return Alert.alert("Fehler", "Backend-URL fehlt in app.json → extra.backendUrl.");
+    setBusy(true);
+    setMsg("Öffne Spotify Login…");
+
+    const loginUrl = `${BACKEND_URL}/login?platform=mobile`;
+    const redirect = Linking.createURL("callback");
+
+    const res = await WebBrowser.openAuthSessionAsync(loginUrl, redirect, { showInRecents: true });
+    if (res.type === "success") {
+      setMsg("Zurück in der App – prüfe Login…");
+      const r = await fetch(`${BACKEND_URL}/whoami`, { credentials: "include" as any });
+      if (r.ok) {
+        const j = await r.json();
+        setMe({ id: j.id, display_name: j.display_name });
+        setMsg("Login erfolgreich ✅");
+      }
+    } else if (res.type === "cancel") {
+      setMsg("Login abgebrochen");
+    }
+    setBusy(false);
+  }, []);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 20 }}>Celebeaty Mobile</Text>
+      {me ? (
+        <Text>Eingeloggt als: {me.display_name || me.id}</Text>
+      ) : (
+        <Pressable
+          onPress={doLogin}
+          style={{
+            backgroundColor: "#1DB954",
+            padding: 14,
+            borderRadius: 10,
+            opacity: busy ? 0.6 : 1,
+          }}
+        >
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={{ color: "#fff" }}>Mit Spotify einloggen</Text>}
+        </Pressable>
+      )}
+      {msg ? <Text style={{ marginTop: 20 }}>{msg}</Text> : null}
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
